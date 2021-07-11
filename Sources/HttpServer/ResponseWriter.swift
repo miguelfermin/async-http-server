@@ -71,8 +71,6 @@ extension DefaultResponseWriter: ResponseWriter {
 
 // MARK: Implementation
 extension DefaultResponseWriter {
-    // Note: This subscript does not work for all HTTP headers,
-    // but for a lot of simple ones it does.
     private subscript(name: String) -> String? {
         set {
             assert(!didWriteHeader, "header is out")
@@ -92,7 +90,6 @@ extension DefaultResponseWriter {
         guard !didWriteHeader else { return }
         didWriteHeader = true
         
-        // send the headers and the data
         let head = HTTPResponseHead(version: .init(major: 1, minor: 1), status: status, headers: headers)
         let part = HTTPServerResponsePart.head(head)
         _ = channel.writeAndFlush(part)

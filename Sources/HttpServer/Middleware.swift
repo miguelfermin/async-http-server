@@ -28,14 +28,8 @@ public func cors(allowOrigin origin: String) -> Middleware {
 // MARK: - QueryString
 private let paramDictKey = "com.mafsoftware.httpserver.query.string.param"
 
-/// A middleware which parses the URL query
-/// parameters. You can then access them
-/// using:
-///
-///     req.param("id")
-///
+/// A middleware which parses the URL query parameters.
 func queryString(req: Request, res: ResponseWriter, next: @escaping Next) {
-    // use Foundation to parse the `?a=x` parameters
     if let queryItems = URLComponents(string: req.uri)?.queryItems {
         req.userInfo[paramDictKey] = Dictionary(grouping: queryItems, by: { $0.name })
             .mapValues { $0.compactMap({ $0.value })
@@ -48,9 +42,8 @@ func queryString(req: Request, res: ResponseWriter, next: @escaping Next) {
 public extension Request {
     /// Access query parameters, like:
     ///
-    ///     let userID = req.param("id")
+    ///     let userId = req.param("id")
     ///     let token  = req.param("token")
-    ///
     func param(_ id: String) -> String? {
         (userInfo[paramDictKey] as? [String: String])?[id]
     }
