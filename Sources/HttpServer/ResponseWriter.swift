@@ -1,0 +1,124 @@
+//
+//  ResponseWriter.swift
+//  
+//
+//  Created by Miguel Fermin on 7/7/21.
+//
+
+import NIO
+import NIOHTTP1
+
+import struct Foundation.Data
+import class  Foundation.JSONEncoder
+
+public protocol ResponseWriter {
+    var headers: HTTPHeaders { get }
+    
+    func write(_ string: String)
+    
+    func write<T: Encodable>(_ model: T, status: HTTPResponseStatus)
+    
+    func setHeader(key: String, value: String)
+}
+
+// MARK: - DefaultResponseWriter
+class DefaultResponseWriter {
+    private let channel: Channel
+    private var status = HTTPResponseStatus.ok
+    private var didWriteHeader = false
+    private var didEnd = false
+    
+    private(set) public var headers = HTTPHeaders()
+    
+    init(channel: Channel) {
+        self.channel = channel
+    }
+}
+
+// MARK: ResponseWriter
+extension DefaultResponseWriter: ResponseWriter {
+    public func setHeader(key: String, value: String) {
+        self[key] = value
+    }
+    
+    public func write(_ string: String) {
+        flushHeader()
+        
+        var buffer = channel.allocator.buffer(capacity: string.count)
+        buffer.writeString(string)
+        write(buffer)
+    }
+    
+    public func write<T: Encodable>(_ model: T, status: HTTPResponseStatus = .ok) {
+        let data: Data
+        do {
+          data = try JSONEncoder().encode(model)
+        } catch {
+            return handleError(error)
+        }
+        
+        self["Content-Type"]   = "application/json"
+        self["Content-Length"] = "\(data.count)"
+        
+        self.status = status
+        flushHeader()
+        
+        var buffer = channel.allocator.buffer(capacity: data.count)
+        buffer.writeBytes(data)
+        write(buffer)
+    }
+}
+
+// MARK: Implementation
+extension DefaultResponseWriter {
+    // Note: This subscript does not work for all HTTP headers,
+    // but for a lot of simple ones it does.
+    private subscript(name: String) -> String? {
+        set {
+            assert(!didWriteHeader, "header is out")
+            if let value = newValue {
+                headers.replaceOrAdd(name: name, value: value)
+            } else {
+                headers.remove(name: name)
+            }
+        }
+        get {
+            headers[name].joined(separator: ", ")
+        }
+    }
+    
+    /// Check whether we already wrote the response header. If not, do so.
+    private func flushHeader() {
+        guard !didWriteHeader else { return }
+        didWriteHeader = true
+        
+        // send the headers and the data
+        let head = HTTPResponseHead(version: .init(major: 1, minor: 1), status: status, headers: headers)
+        let part = HTTPServerResponsePart.head(head)
+        _ = channel.writeAndFlush(part)
+            .recover(handleError)
+    }
+    
+    private func handleError(_ error: Error) {
+        print("ERROR:", error)
+        end()
+    }
+    
+    private func end() {
+        guard !didEnd else { return }
+        didEnd = true
+        
+        _ = channel.writeAndFlush(HTTPServerResponsePart.end(nil))
+            .map {
+                self.channel.close()
+            }
+    }
+    
+    private func write(_ buffer: ByteBuffer) {
+        let part = HTTPServerResponsePart.body(.byteBuffer(buffer))
+        _ = channel.writeAndFlush(part)
+                   .recover(handleError)
+                   .map(end)
+    }
+}
+
