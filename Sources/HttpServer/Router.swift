@@ -8,13 +8,13 @@
 import NIOHTTP1
 
 public final class Router: Handler {
-    private var middleware = [Middleware]()
+    private var middleware = [HandleFunc]()
     
     public init() {
-        use(queryString)
+        use(Middleware.queryString)
     }
     
-    public func use(_ middleware: Middleware...) {
+    public func use(_ middleware: HandleFunc...) {
         self.middleware.append(contentsOf: middleware)
     }
     
@@ -40,33 +40,33 @@ public final class Router: Handler {
 
 // MARK: - Routes
 extension Router {
-    public func get(_ path: String, middleware: @escaping Middleware) {
-        handle(path: path, method: .GET, middleware: middleware)
+    public func get(_ path: String, handler: @escaping HandleFunc) {
+        handle(path: path, method: .GET, handler: handler)
     }
     
-    public func post(_ path: String, middleware: @escaping Middleware) {
-        handle(path: path, method: .POST, middleware: middleware)
+    public func post(_ path: String, handler: @escaping HandleFunc) {
+        handle(path: path, method: .POST, handler: handler)
     }
     
-    public func put(_ path: String, middleware: @escaping Middleware) {
-        handle(path: path, method: .PUT, middleware: middleware)
+    public func put(_ path: String, handler: @escaping HandleFunc) {
+        handle(path: path, method: .PUT, handler: handler)
     }
     
-    public func patch(_ path: String, middleware: @escaping Middleware) {
-        handle(path: path, method: .PATCH, middleware: middleware)
+    public func patch(_ path: String, handler: @escaping HandleFunc) {
+        handle(path: path, method: .PATCH, handler: handler)
     }
     
-    public func delete(_ path: String, middleware: @escaping Middleware) {
-        handle(path: path, method: .DELETE, middleware: middleware)
+    public func delete(_ path: String, handler: @escaping HandleFunc) {
+        handle(path: path, method: .DELETE, handler: handler)
     }
     
-    public func handle(path: String, method: HTTPMethod , middleware: @escaping Middleware) {
+    public func handle(path: String, method: HTTPMethod , handler: @escaping HandleFunc) {
         use { req, res, next in
             guard let first = req.uri.split(separator: "?").first, req.method == method, (first == path || first == "\(path)/") else {
                 next()
                 return
             }
-            middleware(req, res, next)
+            handler(req, res, next)
         }
     }
 }

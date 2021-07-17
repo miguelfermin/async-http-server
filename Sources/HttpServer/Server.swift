@@ -1,5 +1,5 @@
 //
-//  HttpServer.swift
+//  Server.swift
 //
 //
 //  Created by Miguel Fermin on 7/7/21.
@@ -9,7 +9,7 @@ import NIO
 import NIOHTTP1
 import struct Foundation.UUID
 
-public class HttpServer {
+public class Server {
     private let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     
     public init() {}

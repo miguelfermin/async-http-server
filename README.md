@@ -8,10 +8,11 @@ Simple HTTP Server built with [SwiftNIO](https://github.com/apple/swift-nio) and
 ```swift
 let router = Router()
 ```
-2. Add Middleware, as many as needed, and called in the order they're added.
+2. Add Middleware
 ```swift
 router.use(
-    cors(allowOrigin: "*")
+    Middleware.cors(allowOrigin: "*"),
+    myCustomMiddleware
 )
 ```
 3. Add Handlers
@@ -37,13 +38,14 @@ router.get("/v1/device") { req, res, _ in
 
 // POST
 router.post("/v1/devices") { req, res, _ in
-    guard let device: Device = req.model() else {
-        res.write(DeviceError.addError, status: .badRequest)
-        return
-    }
     do {
-        try DataSource.addDevice(device)
-        res.write(device, status: .ok)
+        let device: Device = try req.model()
+        let savedDevice = try DataSource.addDevice(device)
+        res.write(savedDevice, status: .ok)
+    } catch RequestDecodingError.info(let info) {
+        res.write(info, status: .badRequest)
+    } catch SaveDeviceError.info(let info, let status) {
+        res.write(info, status: status)
     } catch {
         res.write(error.localizedDescription, status: .internalServerError)
     }
@@ -51,21 +53,22 @@ router.post("/v1/devices") { req, res, _ in
 
 // DELETE
 router.delete("/v1/device") { req, res, _ in
-    guard let device: Device = req.model() else {
-        res.write(DeviceError.addError, status: .badRequest)
-        return
-    }
     do {
+        let device: Device = try req.model()
         try DataSource.deleteDevice(id: device.id)
         res.write("Device deleted", status: .ok)
+    } catch RequestDecodingError.info(let info) {
+        res.write(info, status: .badRequest)
+    } catch DeleteDeviceError.info(let info, let status) {
+        res.write(info, status: status)
     } catch {
-        res.write(DeviceError.deleteError, status: .internalServerError)
+        res.write(error.localizedDescription, status: .internalServerError)
     }
 }
 ```
 4. Start Server
 ```swift
-let server = HttpServer()
+let server = Server()
 let host = "localhost"
 let port = 1338
 
