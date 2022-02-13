@@ -10,14 +10,14 @@ import NIOHTTP1
 import struct Foundation.UUID
 
 public class Server {
-    private let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+    public let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
     
     public init() {}
     
     public func listenAndServe(host: String, port: Int, handler: Handler) throws {
         let reuseAddrOpt = ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR)
         
-        let bootstrap = ServerBootstrap(group: group)
+        let bootstrap = ServerBootstrap(group: eventLoopGroup)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(reuseAddrOpt, value: 1)
         

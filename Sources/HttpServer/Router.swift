@@ -44,10 +44,6 @@ extension Router {
         handle(path: path, method: .GET, handler: handler)
     }
     
-    public func post(_ path: String, handler: @escaping HandleFunc) {
-        handle(path: path, method: .POST, handler: handler)
-    }
-    
     public func put(_ path: String, handler: @escaping HandleFunc) {
         handle(path: path, method: .PUT, handler: handler)
     }
@@ -62,7 +58,11 @@ extension Router {
     
     public func handle(path: String, method: HTTPMethod , handler: @escaping HandleFunc) {
         use { req, res, next in
-            guard let first = req.uri.split(separator: "?").first, req.method == method, (first == path || first == "\(path)/") else {
+            guard
+                let first = req.uri.split(separator: "?").first,
+                req.method == method,
+                (first == path || first == "\(path)/")
+            else {
                 next()
                 return
             }
@@ -70,3 +70,31 @@ extension Router {
         }
     }
 }
+
+// MARK: - Routes
+#if compiler(>=5.5) && canImport(_Concurrency)
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+extension Router {
+    
+    public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .POST) { request, response, sender in
+            Task {
+                do {
+                    let input: I = try request.model()
+                    let output = try await function(input)
+                    response.write(output, status: .ok)
+                } catch RequestDecodingError.info(let info) {
+                    response.write(info, status: .badRequest)
+                } catch {
+                    if let errorProvider = (error as? ErrorInfoProvider), let errorInfo = errorProvider.errorInfo {
+                        response.write(errorInfo.data, status: errorInfo.status)
+                    } else {
+                        response.write(error.localizedDescription, status: .internalServerError)
+                    }
+                }
+            }
+        }
+    }
+}
+
+#endif

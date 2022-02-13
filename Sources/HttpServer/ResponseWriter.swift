@@ -16,6 +16,8 @@ public protocol ResponseWriter {
     
     func write(_ string: String)
     
+    func write(_ data: Data, status: HTTPResponseStatus)
+    
     func write<T: Encodable>(_ model: T, status: HTTPResponseStatus)
     
     func setHeader(key: String, value: String)
@@ -37,11 +39,11 @@ class DefaultResponseWriter {
 
 // MARK: ResponseWriter
 extension DefaultResponseWriter: ResponseWriter {
-    public func setHeader(key: String, value: String) {
+    func setHeader(key: String, value: String) {
         self[key] = value
     }
     
-    public func write(_ string: String) {
+    func write(_ string: String) {
         flushHeader()
         
         var buffer = channel.allocator.buffer(capacity: string.count)
@@ -49,20 +51,24 @@ extension DefaultResponseWriter: ResponseWriter {
         write(buffer)
     }
     
-    public func write<T: Encodable>(_ model: T, status: HTTPResponseStatus = .ok) {
+    func write<T: Encodable>(_ model: T, status: HTTPResponseStatus = .ok) {
         let data: Data
         do {
-          data = try JSONEncoder().encode(model)
+            data = try JSONEncoder().encode(model)
+            write(data, status: status)
         } catch {
-            return handleError(error)
+            if let data = "Server Error: \(error.localizedDescription)".data(using: .utf8) {
+                write(data, status: .internalServerError)
+            }
+            handleError(error)
         }
-        
+    }
+    
+    func write(_ data: Data, status: HTTPResponseStatus) {
         self["Content-Type"]   = "application/json"
         self["Content-Length"] = "\(data.count)"
-        
         self.status = status
         flushHeader()
-        
         var buffer = channel.allocator.buffer(capacity: data.count)
         buffer.writeBytes(data)
         write(buffer)
