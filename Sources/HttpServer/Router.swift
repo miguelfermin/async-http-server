@@ -7,7 +7,7 @@
 
 import NIOHTTP1
 
-public final class Router: Handler {
+public final class Router {
     private var middleware = [HandleFunc]()
     
     public init() {
@@ -17,9 +17,12 @@ public final class Router: Handler {
     public func use(_ middleware: HandleFunc...) {
         self.middleware.append(contentsOf: middleware)
     }
-    
+}
+
+// MARK: - Routes+Handler
+extension Router: Handler {
     /// Request handler. Calls its middleware list in sequence until one doesn't call **next()**.
-    public func handle(request: Request, response: ResponseWriter, next upperNext: @escaping Next) {
+    func handle(request: Request, response: ResponseWriter, next upperNext: @escaping Next) {
         let stack = self.middleware
         guard !stack.isEmpty else { return upperNext() }
         
@@ -39,45 +42,35 @@ public final class Router: Handler {
 }
 
 // MARK: - Routes
-extension Router {
-    public func get(_ path: String, handler: @escaping HandleFunc) {
-        handle(path: path, method: .GET, handler: handler)
-    }
-    
-    public func put(_ path: String, handler: @escaping HandleFunc) {
-        handle(path: path, method: .PUT, handler: handler)
-    }
-    
-    public func patch(_ path: String, handler: @escaping HandleFunc) {
-        handle(path: path, method: .PATCH, handler: handler)
-    }
-    
-    public func delete(_ path: String, handler: @escaping HandleFunc) {
-        handle(path: path, method: .DELETE, handler: handler)
-    }
-    
-    public func handle(path: String, method: HTTPMethod , handler: @escaping HandleFunc) {
-        use { req, res, next in
-            guard
-                let first = req.uri.split(separator: "?").first,
-                req.method == method,
-                (first == path || first == "\(path)/")
-            else {
-                next()
-                return
-            }
-            handler(req, res, next)
-        }
-    }
-}
-
-// MARK: - Routes
 #if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension Router {
+    public func get<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .GET, function: function)
+    }
     
     public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .POST) { request, response, sender in
+        handle(path: path, method: .POST, function: function)
+    }
+    
+    public func put<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .PUT, function: function)
+    }
+    
+    public func patch<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .PATCH, function: function)
+    }
+    
+    public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .DELETE, function: function)
+    }
+    
+    public func handle<I: Codable, O: Codable>(path: String, method: HTTPMethod, function: @escaping (I) async throws -> O) {
+        use { request, response, next in
+            guard let first = request.uri.split(separator: "?").first, request.method == method, (first == path || first == "\(path)/") else {
+                next()
+                return
+            }
             Task {
                 do {
                     let input: I = try request.model()
