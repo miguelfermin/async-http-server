@@ -40,10 +40,6 @@ This is just an example of how to use this package to provide an API for an orga
 
 Define Organization type and its dependencies
 ```swift
-import HttpServer
-import AsyncHTTPClient
-import Logging
-
 struct Organization {
     let logger: Logger
     let httpClient: HTTPClient
@@ -72,7 +68,7 @@ Then we have the `register` method which matches the signature of the Router's `
 
 ```swift
 extension Organization {
-    /// Registers an organization with Carbon Cloud.
+    /// Registers an organization with Cloud.
     /// - Parameter organization: The organization request model with information to register.
     /// - Returns: The response of registering the organization.
     func register(organization: OrganizationRequest) async throws -> OrganizationResponse {
@@ -99,9 +95,6 @@ extension Organization {
 ```
 This sample project has an `APIError` type that conforms to a `ErrorInfoProvider`, which is defined in HttpServer package. This allows you to provide meaningful error responses to your users. You are free to structure your error types as you like, but just have to provide a `var errorInfo: ErrorInfo? { ... }` implementation. For example:
 ```swift
-import Foundation
-import HttpServer
-
 enum APIError: Error, ErrorInfoProvider {
     case errorResponse(ErrorResponse)
     case unknown
