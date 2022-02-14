@@ -21,12 +21,10 @@ public class Server {
         let bootstrap = ServerBootstrap(group: eventLoopGroup)
             .serverChannelOption(ChannelOptions.backlog, value: 256)
             .serverChannelOption(reuseAddrOpt, value: 1)
-        
             .childChannelInitializer { channel in
-                channel.pipeline.configureHTTPServerPipeline()
-                    .flatMap {
-                        channel.pipeline.addHandler(ChannelHandler(handler: handler))
-                    }
+                channel.pipeline.configureHTTPServerPipeline().flatMap {
+                    channel.pipeline.addHandler(ChannelHandler(handler: handler))
+                }
             }
             .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
             .childChannelOption(reuseAddrOpt, value: 1)

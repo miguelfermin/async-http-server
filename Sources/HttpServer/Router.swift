@@ -42,6 +42,10 @@ extension Router: Handler {
 }
 
 // MARK: - Routes
+
+public typealias AsyncFunc<I: Codable, O: Codable> = (I) async throws -> O
+func asyncFunc<I: Codable, O: Codable>(fn: AsyncFunc<I, O>) { }
+
 #if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension Router {
@@ -64,8 +68,11 @@ extension Router {
     public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
         handle(path: path, method: .DELETE, function: function)
     }
-    
-    public func handle<I: Codable, O: Codable>(path: String, method: HTTPMethod, function: @escaping (I) async throws -> O) {
+}
+
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+extension Router {
+    func handle<I: Codable, O: Codable>(path: String, method: HTTPMethod, function: @escaping (I) async throws -> O) {
         use { request, response, next in
             guard let first = request.uri.split(separator: "?").first, request.method == method, (first == path || first == "\(path)/") else {
                 next()
@@ -73,7 +80,12 @@ extension Router {
             }
             Task {
                 do {
-                    let input: I = try request.model()
+                    let input: I
+                    if request.method == .GET, let params = request.params as? I {
+                        input = params
+                    } else {
+                        input = try request.model()
+                    }
                     let output = try await function(input)
                     response.write(output, status: .ok)
                 } catch RequestDecodingError.info(let info) {

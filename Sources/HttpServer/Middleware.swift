@@ -50,4 +50,8 @@ public extension Request {
     func param(_ id: String) -> String? {
         (userInfo[paramDictKey] as? [String: String])?[id]
     }
+    
+    var params: [String: String] {
+        userInfo[paramDictKey] as? [String: String] ?? [:]
+    }
 }
