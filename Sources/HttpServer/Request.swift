@@ -11,10 +11,10 @@ import NIOFoundationCompat
 import class  Foundation.JSONDecoder
 
 public class Request {
-    public var userInfo = [String: Any]()
     private let header: HTTPRequestHead
     private var body: ByteBuffer?
     private var end: HTTPHeaders?
+    var urlData = RequestURLData()
     
     init(header: HTTPRequestHead, body: ByteBuffer?, end: HTTPHeaders?) {
         self.header = header
@@ -52,6 +52,13 @@ extension Request {
     }
 }
 
+// MARK: - RequestURLData
+public struct RequestURLData: Codable {
+    public internal(set) var queryItems: [String: String] = [:]
+    public internal(set) var namedParams: [String: String] = [:]
+}
+
+// MARK: - RequestDecodingError
 public enum RequestDecodingError: Error {
     case info(info: Info)
     

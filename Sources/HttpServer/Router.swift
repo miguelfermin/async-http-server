@@ -6,6 +6,7 @@
 //
 
 import NIOHTTP1
+import struct Foundation.URLComponents
 
 public final class Router {
     private var middleware = [HandleFunc]()
@@ -42,10 +43,6 @@ extension Router: Handler {
 }
 
 // MARK: - Routes
-
-public typealias AsyncFunc<I: Codable, O: Codable> = (I) async throws -> O
-func asyncFunc<I: Codable, O: Codable>(fn: AsyncFunc<I, O>) { }
-
 #if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension Router {
@@ -74,15 +71,44 @@ extension Router {
 extension Router {
     func handle<I: Codable, O: Codable>(path: String, method: HTTPMethod, function: @escaping (I) async throws -> O) {
         use { request, response, next in
-            guard let first = request.uri.split(separator: "?").first, request.method == method, (first == path || first == "\(path)/") else {
+            guard request.method == method else {
                 next()
                 return
             }
+            guard let requestPath = URLComponents(string: request.uri)?.path else {
+                next()
+                return
+            }
+            
+            var hasNamedParam = false
+            if path.contains(":") {
+                let comps = path.split(separator: ":")
+                if comps.count > 1, let name = comps.last {
+                    if let value = requestPath.split(separator: "/").last {
+                        hasNamedParam = true
+                        request.urlData.namedParams[String(name)] = String(value)
+                    }
+                }
+            }
+            
+            // Named parameters only match a single path segment
+            if hasNamedParam {
+                if requestPath.split(separator: "/").dropLast() != path.split(separator: "/").dropLast() {
+                    next()
+                    return
+                }
+            } else {
+                guard (requestPath == path || requestPath == "\(path)/") else {
+                    next()
+                    return
+                }
+            }
+            
             Task {
                 do {
                     let input: I
-                    if request.method == .GET, let params = request.params as? I {
-                        input = params
+                    if request.method == .GET, let urlData = request.urlData as? I {
+                        input = urlData
                     } else {
                         input = try request.model()
                     }

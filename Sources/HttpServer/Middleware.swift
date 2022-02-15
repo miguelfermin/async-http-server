@@ -27,31 +27,15 @@ extension Middleware {
 }
 
 // MARK: - QueryString
-private let paramDictKey = "com.mafsoftware.httpserver.query.string.param"
-
 extension Middleware {
     /// A middleware which parses the URL query parameters.
     static func queryString(req: Request, res: ResponseWriter, next: @escaping Next) {
         if let queryItems = URLComponents(string: req.uri)?.queryItems {
-            req.userInfo[paramDictKey] = Dictionary(grouping: queryItems, by: { $0.name })
-                .mapValues { $0.compactMap({ $0.value })
-                    .joined(separator: ",") }
+            let queryItems = Dictionary(grouping: queryItems, by: { $0.name })
+                .mapValues { $0.compactMap({ $0.value }).joined(separator: ",") }
+            req.urlData.queryItems = queryItems
         }
         // pass on control to next middleware
         next()
-    }
-}
-
-public extension Request {
-    /// Access query parameters, like:
-    ///
-    ///     let userId = req.param("id")
-    ///     let token  = req.param("token")
-    func param(_ id: String) -> String? {
-        (userInfo[paramDictKey] as? [String: String])?[id]
-    }
-    
-    var params: [String: String] {
-        userInfo[paramDictKey] as? [String: String] ?? [:]
     }
 }
