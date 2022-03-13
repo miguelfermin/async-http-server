@@ -9,6 +9,7 @@ import NIO
 import NIOHTTP1
 import NIOFoundationCompat
 import class  Foundation.JSONDecoder
+import struct Foundation.URLComponents
 
 public class Request {
     private let header: HTTPRequestHead
@@ -26,29 +27,54 @@ public class Request {
     
     public var method: HTTPMethod { header.method }
     
-    public func headerValue(key: String) -> String? {
-        header.headers[key].first
-    }
+    public func headerValue(key: String) -> String? { header.headers[key].first }
 }
 
 // MARK: - Decoding
 extension Request {
-    public func model<T: Decodable>() throws -> T {
+    public func decodedBody<T: Decodable>() throws -> T {
         guard let body = body else {
-            let info = RequestDecodingError.Info(title: "Missing Request Body", description: "")
-            throw RequestDecodingError.info(info: info)
+            throw HttpServerError.decoding(dict: ["title": "Missing Request Body"])
         }
         do {
             return try JSONDecoder().decode(T.self, from: body)
         } catch DecodingError.keyNotFound(let key, _) {
-            let info = RequestDecodingError.Info(title: key.stringValue, description: "Missing")
-            throw RequestDecodingError.info(info: info)
+            throw HttpServerError.decoding(dict: [key.stringValue: "Missing"])
         } catch DecodingError.typeMismatch(_, let context) {
             let title = context.codingPath.first?.stringValue ?? ""
             let description = context.debugDescription
-            let info = RequestDecodingError.Info(title: title, description: description)
-            throw RequestDecodingError.info(info: info)
+            throw HttpServerError.decoding(dict: [title : description])
         }
+    }
+    
+    func prepareAndValidate(path: String, method: HTTPMethod) -> Bool {
+        guard self.method == method else {
+            return false
+        }
+        guard let requestPath = URLComponents(string: uri)?.path else {
+            return false
+        }
+        var hasNamedParam = false
+        if path.contains(":") {
+            let comps = path.split(separator: ":")
+            if comps.count > 1, let name = comps.last {
+                if let value = requestPath.split(separator: "/").last {
+                    hasNamedParam = true
+                    urlData.namedParams[String(name)] = String(value)
+                }
+            }
+        }
+        // Named parameters only match a single path segment
+        if hasNamedParam {
+            if requestPath.split(separator: "/").dropLast() != path.split(separator: "/").dropLast() {
+                return false
+            }
+        } else {
+            guard (requestPath == path || requestPath == "\(path)/") else {
+                return false
+            }
+        }
+        return true
     }
 }
 
@@ -58,12 +84,22 @@ public struct RequestURLData: Codable {
     public internal(set) var namedParams: [String: String] = [:]
 }
 
-// MARK: - RequestDecodingError
-public enum RequestDecodingError: Error {
-    case info(info: Info)
+// MARK: - Input
+public struct Input<I: Codable> {
+    public let request: I
+    public var requestURLData: RequestURLData
     
-    public struct Info: Codable {
-        public let title: String
-        public let description: String
+    init(_ httpRequest: Request) throws {
+        if httpRequest.method == .GET {
+            guard let request = httpRequest.urlData as? I else {
+                throw HttpServerError.pathAndHandlerMissMatch
+            }
+            self.request = request
+            self.requestURLData = httpRequest.urlData
+        } else {
+            self.request = try httpRequest.decodedBody()
+            self.requestURLData = httpRequest.urlData
+        }
     }
 }
+

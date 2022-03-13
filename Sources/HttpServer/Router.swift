@@ -6,7 +6,6 @@
 //
 
 import NIOHTTP1
-import struct Foundation.URLComponents
 
 public final class Router {
     private var middleware = [HandleFunc]()
@@ -46,79 +45,24 @@ extension Router: Handler {
 #if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension Router {
-    public func get<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .GET, function: function)
-    }
-    
-    public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .POST, function: function)
-    }
-    
-    public func put<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .PUT, function: function)
-    }
-    
-    public func patch<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .PATCH, function: function)
-    }
-    
-    public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .DELETE, function: function)
-    }
-}
-
-@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-extension Router {
-    func handle<I: Codable, O: Codable>(path: String, method: HTTPMethod, function: @escaping (I) async throws -> O) {
+    public func handle<I: Codable, O: Codable>(
+        path: String,
+        method: HTTPMethod,
+        function: @escaping (Input<I>) async throws -> O
+    ) {
         use { request, response, next in
-            guard request.method == method else {
+            if request.prepareAndValidate(path: path, method: method) == false {
                 next()
                 return
             }
-            guard let requestPath = URLComponents(string: request.uri)?.path else {
-                next()
-                return
-            }
-            
-            var hasNamedParam = false
-            if path.contains(":") {
-                let comps = path.split(separator: ":")
-                if comps.count > 1, let name = comps.last {
-                    if let value = requestPath.split(separator: "/").last {
-                        hasNamedParam = true
-                        request.urlData.namedParams[String(name)] = String(value)
-                    }
-                }
-            }
-            
-            // Named parameters only match a single path segment
-            if hasNamedParam {
-                if requestPath.split(separator: "/").dropLast() != path.split(separator: "/").dropLast() {
-                    next()
-                    return
-                }
-            } else {
-                guard (requestPath == path || requestPath == "\(path)/") else {
-                    next()
-                    return
-                }
-            }
-            
             Task {
                 do {
-                    let input: I
-                    if request.method == .GET, let urlData = request.urlData as? I {
-                        input = urlData
-                    } else {
-                        input = try request.model()
-                    }
+                    let input = try Input<I>(request)
                     let output = try await function(input)
                     response.write(output, status: .ok)
-                } catch RequestDecodingError.info(let info) {
-                    response.write(info, status: .badRequest)
                 } catch {
-                    if let errorProvider = (error as? ErrorInfoProvider), let errorInfo = errorProvider.errorInfo {
-                        response.write(errorInfo.data, status: errorInfo.status)
+                    if let errorProvider = (error as? ErrorInfoProvider) {
+                        response.writeErrorInfo(errorProvider.errorInfo)
                     } else {
                         response.write(error.localizedDescription, status: .internalServerError)
                     }
@@ -127,5 +71,50 @@ extension Router {
         }
     }
 }
+#endif
 
+// MARK: - Convenience API
+#if compiler(>=5.5) && canImport(_Concurrency)
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+extension Router {
+    public func get<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .GET) { input in try await function(input.request) }
+    }
+    
+    public func get<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+        handle(path: path, method: .GET, function: function)
+    }
+    
+    public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .POST) { input in try await function(input.request) }
+    }
+    
+    public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+        handle(path: path, method: .POST, function: function)
+    }
+    
+    public func put<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .PUT) { input in try await function(input.request) }
+    }
+    
+    public func put<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+        handle(path: path, method: .PUT, function: function)
+    }
+    
+    public func patch<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .PATCH) { input in try await function(input.request) }
+    }
+    
+    public func patch<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+        handle(path: path, method: .PATCH, function: function)
+    }
+    
+    public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
+        handle(path: path, method: .DELETE) { input in try await function(input.request) }
+    }
+    
+    public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+        handle(path: path, method: .DELETE, function: function)
+    }
+}
 #endif

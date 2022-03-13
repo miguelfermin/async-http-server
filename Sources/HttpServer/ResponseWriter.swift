@@ -13,13 +13,10 @@ import class  Foundation.JSONEncoder
 
 public protocol ResponseWriter {
     var headers: HTTPHeaders { get }
-    
     func write(_ string: String)
-    
     func write(_ data: Data, status: HTTPResponseStatus)
-    
     func write<T: Encodable>(_ model: T, status: HTTPResponseStatus)
-    
+    func writeErrorInfo(_ errorInfo: ErrorInfo)
     func setHeader(key: String, value: String)
 }
 
@@ -56,6 +53,19 @@ extension DefaultResponseWriter: ResponseWriter {
         do {
             data = try JSONEncoder().encode(model)
             write(data, status: status)
+        } catch {
+            if let data = "Server Error: \(error.localizedDescription)".data(using: .utf8) {
+                write(data, status: .internalServerError)
+            }
+            handleError(error)
+        }
+    }
+    
+    func writeErrorInfo(_ errorInfo: ErrorInfo) {
+        let data: Data
+        do {
+            data = try errorInfo.data.jsonEncoded()
+            write(data, status: errorInfo.status)
         } catch {
             if let data = "Server Error: \(error.localizedDescription)".data(using: .utf8) {
                 write(data, status: .internalServerError)
