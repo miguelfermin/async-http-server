@@ -11,27 +11,32 @@ import NIOFoundationCompat
 import class  Foundation.JSONDecoder
 import struct Foundation.URLComponents
 
+public typealias HandleFuncAsync<O> = (Request) async throws -> O
+
 public class Request {
-    private let header: HTTPRequestHead
+    fileprivate let header: HTTPRequestHead
     private var body: ByteBuffer?
     private var end: HTTPHeaders?
-    var urlData = RequestURLData()
+    
+    public var context: [String: Any] = [:]
+    public var queryItems: [String: String] = [:]
+    public var namedParams: [String: String] = [:]
     
     init(header: HTTPRequestHead, body: ByteBuffer?, end: HTTPHeaders?) {
         self.header = header
         self.body = body
         self.end = end
     }
-    
+}
+
+// MARK: - API
+extension Request {
     public var uri: String { header.uri }
     
     public var method: HTTPMethod { header.method }
     
     public func headerValue(key: String) -> String? { header.headers[key].first }
-}
-
-// MARK: - Decoding
-extension Request {
+    
     public func decodedBody<T: Decodable>() throws -> T {
         guard let body = body else {
             throw HttpServerError.decoding(dict: ["title": "Missing Request Body"])
@@ -46,9 +51,12 @@ extension Request {
             throw HttpServerError.decoding(dict: [title : description])
         }
     }
-    
+}
+
+// MARK: - Helpers
+extension Request {
     func prepareAndValidate(path: String, method: HTTPMethod) -> Bool {
-        guard self.method == method else {
+        guard header.method == method else {
             return false
         }
         guard let requestPath = URLComponents(string: uri)?.path else {
@@ -60,7 +68,7 @@ extension Request {
             if comps.count > 1, let name = comps.last {
                 if let value = requestPath.split(separator: "/").last {
                     hasNamedParam = true
-                    urlData.namedParams[String(name)] = String(value)
+                    namedParams[String(name)] = String(value)
                 }
             }
         }
@@ -77,29 +85,3 @@ extension Request {
         return true
     }
 }
-
-// MARK: - RequestURLData
-public struct RequestURLData: Codable {
-    public internal(set) var queryItems: [String: String] = [:]
-    public internal(set) var namedParams: [String: String] = [:]
-}
-
-// MARK: - Input
-public struct Input<I: Codable> {
-    public let request: I
-    public var requestURLData: RequestURLData
-    
-    init(_ httpRequest: Request) throws {
-        if httpRequest.method == .GET {
-            guard let request = httpRequest.urlData as? I else {
-                throw HttpServerError.pathAndHandlerMissMatch
-            }
-            self.request = request
-            self.requestURLData = httpRequest.urlData
-        } else {
-            self.request = try httpRequest.decodedBody()
-            self.requestURLData = httpRequest.urlData
-        }
-    }
-}
-

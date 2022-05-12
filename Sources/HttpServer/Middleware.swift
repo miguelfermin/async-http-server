@@ -33,7 +33,7 @@ extension Middleware {
         if let queryItems = URLComponents(string: req.uri)?.queryItems {
             let queryItems = Dictionary(grouping: queryItems, by: { $0.name })
                 .mapValues { $0.compactMap({ $0.value }).joined(separator: ",") }
-            req.urlData.queryItems = queryItems
+            req.queryItems = queryItems
         }
         // pass on control to next middleware
         next()

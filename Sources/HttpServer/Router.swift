@@ -45,10 +45,10 @@ extension Router: Handler {
 #if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension Router {
-    public func handle<I: Codable, O: Codable>(
+    public func handle<O: Codable>(
         path: String,
         method: HTTPMethod,
-        function: @escaping (Input<I>) async throws -> O
+        function: @escaping (Request) async throws -> O
     ) {
         use { request, response, next in
             if request.prepareAndValidate(path: path, method: method) == false {
@@ -57,8 +57,7 @@ extension Router {
             }
             Task {
                 do {
-                    let input = try Input<I>(request)
-                    let output = try await function(input)
+                    let output = try await function(request)
                     response.write(output, status: .ok)
                 } catch {
                     if let errorProvider = (error as? ErrorInfoProvider) {
@@ -77,43 +76,22 @@ extension Router {
 #if compiler(>=5.5) && canImport(_Concurrency)
 @available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
 extension Router {
-    public func get<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .GET) { input in try await function(input.request) }
-    }
-    
-    public func get<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+    public func get<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .GET, function: function)
     }
     
-    public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .POST) { input in try await function(input.request) }
-    }
-    
-    public func post<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+    public func post<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .POST, function: function)
     }
     
-    public func put<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .PUT) { input in try await function(input.request) }
-    }
-    
-    public func put<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+    public func put<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .PUT, function: function)
     }
     
-    public func patch<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .PATCH) { input in try await function(input.request) }
-    }
-    
-    public func patch<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+    public func patch<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .PATCH, function: function)
     }
-    
-    public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (I) async throws -> O) {
-        handle(path: path, method: .DELETE) { input in try await function(input.request) }
-    }
-    
-    public func delete<I: Codable, O: Codable>(_ path: String, function: @escaping (Input<I>) async throws -> O) {
+    public func delete<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .DELETE, function: function)
     }
 }
