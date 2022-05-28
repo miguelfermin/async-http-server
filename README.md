@@ -52,5 +52,4 @@ func createTodo(request: Request) async throws -> CreateTodoResponse {
 
 ## References:
 - [SwiftNIO](https://github.com/apple/swift-nio)
-- [Go's http package](https://golang.org/pkg/net/http/)
 - [The Always Right Institute](https://www.alwaysrightinstitute.com/microexpress-nio2/)
