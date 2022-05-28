@@ -21,7 +21,7 @@ try server.listenAndServe(host: "localhost", port: 8000)
 
 // Routes
 server.post("/v1/todo", function: createTodo)
-server.get("/v1/todos", function: getTodoList)
+server.get("/v1/todo", function: getTodoList)
 server.get("/v1/todo/:id", function: getTodo)
 
 // Handlers
