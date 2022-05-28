@@ -1,4 +1,4 @@
-# HttpServer
+# AsyncHttpServer
 
 Naive implementation of a simple HTTP Server. Built with [SwiftNIO](https://github.com/apple/swift-nio).
 
