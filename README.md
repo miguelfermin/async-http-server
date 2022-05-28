@@ -6,30 +6,25 @@ Naive implementation of a simple HTTP Server. Built with [SwiftNIO](https://gith
 
 ## Example
 
-Setup
-
 ```swift
 
+// Setup
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-let httpServer = HTTPServer(eventLoopGroup: eventLoopGroup)
+let server = HTTPServer(eventLoopGroup: eventLoopGroup)
 
 defer {
     try? eventLoopGroup.syncShutdownGracefully()
 }
 
-try httpServer.listenAndServe(host: "localhost", port: 8000)
-```
-Add a handler
+try server.listenAndServe(host: "localhost", port: 8000)
 
-```swift
+// Routes
+server.post("/v1/todo/:id", function: createTodo)
+server.get("/v1/todos", function: getTodoList)
+server.get("/v1/todo/:id", function: getTodo)
 
-httpServer.post("/v1/todo/:id", function: createTodo)
-
-httpServer.get("/v1/todos", function: getTodoList)
-
-httpServer.get("/v1/todo/:id", function: getTodo)
-
+// Handlers
 func getTodoList(request: Request) async throws -> [TodoResponse] {
     ...
 }
@@ -42,12 +37,10 @@ func getTodo(request: Request) async throws -> TodoResponse {
 }
 
 func createTodo(request: Request) async throws -> CreateTodoResponse {
-    // CreateTodoRequest simple conforms to Codable
     let todo: CreateTodoRequest = try request.decodedBody()
     
     ...
 }
-
 ```
 
 ## References:
