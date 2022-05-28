@@ -11,8 +11,6 @@ import NIOFoundationCompat
 import class  Foundation.JSONDecoder
 import struct Foundation.URLComponents
 
-public typealias HandleFuncAsync<O> = (Request) async throws -> O
-
 public class Request {
     fileprivate let header: HTTPRequestHead
     private var body: ByteBuffer?
@@ -35,7 +33,7 @@ extension Request {
     
     public var method: HTTPMethod { header.method }
     
-    public func headerValue(key: String) -> String? { header.headers[key].first }
+    public func headerValue(forKey key: String) -> String? { header.headers[key].first }
     
     public func decodedBody<T: Decodable>() throws -> T {
         guard let body = body else {
