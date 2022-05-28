@@ -22,8 +22,6 @@ try httpServer.listenAndServe(host: "localhost", port: 8000)
 ```
 Add a handler
 
-Setup HTTP endpoints to be exposed
-
 ```swift
 
 httpServer.post("/v1/todo/:id", function: createTodo)
