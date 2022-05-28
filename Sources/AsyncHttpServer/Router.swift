@@ -71,29 +71,3 @@ extension Router {
     }
 }
 #endif
-
-// MARK: - Convenience API
-#if compiler(>=5.5) && canImport(_Concurrency)
-@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
-extension Router {
-    public func get<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
-        handle(path: path, method: .GET, function: function)
-    }
-    
-    public func post<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
-        handle(path: path, method: .POST, function: function)
-    }
-    
-    public func put<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
-        handle(path: path, method: .PUT, function: function)
-    }
-    
-    public func patch<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
-        handle(path: path, method: .PATCH, function: function)
-    }
-    
-    public func delete<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
-        handle(path: path, method: .DELETE, function: function)
-    }
-}
-#endif

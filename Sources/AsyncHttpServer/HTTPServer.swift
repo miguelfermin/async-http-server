@@ -1,5 +1,5 @@
 //
-//  Server.swift
+//  HTTPServer.swift
 //
 //
 //  Created by Miguel Fermin on 7/7/21.
@@ -9,13 +9,28 @@ import NIO
 import NIOHTTP1
 import struct Foundation.UUID
 
-public class Server {
+final public class HTTPServer {
+    let router: Router
+    let eventLoopGroup: MultiThreadedEventLoopGroup
     
-    public let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+    public init(eventLoopGroup: MultiThreadedEventLoopGroup) {
+        self.router = Router()
+        self.eventLoopGroup = eventLoopGroup
+    }
     
-    public init() {}
-    
-    public func listenAndServe(host: String, port: Int, handler: Router) throws {
+    /// Adds middleware HandleFunc to be invoked on every handled request.
+    /// - important: Your implementation must call **next()** to pass on control to next middleware.
+    /// - note: You can also add middleware on a per-handler basis when setting up your routes.
+    /// - Parameter middleware: The middleware HandleFunc to add.
+    public func addMiddlewareHandler(_ middleware: @escaping HandleFunc) {
+        router.use(middleware)
+    }
+
+    /// Starts listening and serving requests.
+    /// - Parameters:
+    ///   - host: The host to bind on.
+    ///   - port: The port to bind on.
+    public func listenAndServe(host: String, port: Int) throws {
         let reuseAddrOpt = ChannelOptions.socket(SocketOptionLevel(SOL_SOCKET), SO_REUSEADDR)
         
         let bootstrap = ServerBootstrap(group: eventLoopGroup)
@@ -23,7 +38,7 @@ public class Server {
             .serverChannelOption(reuseAddrOpt, value: 1)
             .childChannelInitializer { channel in
                 channel.pipeline.configureHTTPServerPipeline().flatMap {
-                    channel.pipeline.addHandler(ChannelHandler(handler: handler))
+                    channel.pipeline.addHandler(ChannelHandler(handler: self.router))
                 }
             }
             .childChannelOption(ChannelOptions.socket(IPPROTO_TCP, TCP_NODELAY), value: 1)
@@ -36,6 +51,32 @@ public class Server {
         try channel.closeFuture.wait()
     }
 }
+
+// MARK: - Routes
+#if compiler(>=5.5) && canImport(_Concurrency)
+@available(macOS 12.0, iOS 15.0, watchOS 8.0, tvOS 15.0, *)
+extension HTTPServer {
+    public func get<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
+        router.handle(path: path, method: .GET, function: function)
+    }
+    
+    public func post<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
+        router.handle(path: path, method: .POST, function: function)
+    }
+    
+    public func put<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
+        router.handle(path: path, method: .PUT, function: function)
+    }
+    
+    public func patch<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
+        router.handle(path: path, method: .PATCH, function: function)
+    }
+    
+    public func delete<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
+        router.handle(path: path, method: .DELETE, function: function)
+    }
+}
+#endif
 
 // MARK: - ChannelHandler
 private class ChannelHandler: ChannelInboundHandler {
@@ -63,6 +104,7 @@ private class ChannelHandler: ChannelInboundHandler {
     }
 }
 
+// MARK: - RequestTask
 private class RequestTask {
     let id = UUID().uuidString
     let header: HTTPRequestHead
