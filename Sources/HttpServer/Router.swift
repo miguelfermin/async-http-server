@@ -91,6 +91,7 @@ extension Router {
     public func patch<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .PATCH, function: function)
     }
+    
     public func delete<O: Codable>(_ path: String, function: @escaping (Request) async throws -> O) {
         handle(path: path, method: .DELETE, function: function)
     }
