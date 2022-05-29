@@ -18,7 +18,7 @@ public class Request {
     
     public var context: [String: Any] = [:]
     public var queryItems: [String: String] = [:]
-    public var namedParams: [String: String] = [:]
+    public var params: [String: String] = [:]
     
     init(header: HTTPRequestHead, body: ByteBuffer?, end: HTTPHeaders?) {
         self.header = header
@@ -66,7 +66,7 @@ extension Request {
             if comps.count > 1, let name = comps.last {
                 if let value = requestPath.split(separator: "/").last {
                     hasNamedParam = true
-                    namedParams[String(name)] = String(value)
+                    params[String(name)] = String(value)
                 }
             }
         }

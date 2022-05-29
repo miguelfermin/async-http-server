@@ -30,7 +30,7 @@ func getTodoList(request: Request) async throws -> [TodoResponse] {
 }
 
 func getTodo(request: Request) async throws -> TodoResponse {
-    guard let id = request.namedParams["id"] else {
+    guard let id = request.params["id"] else {
         throw TodoError(code: 14, message: "id required", statusCode: 400)
     }
     ...
