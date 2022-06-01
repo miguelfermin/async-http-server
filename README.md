@@ -10,7 +10,6 @@ Naive implementation of a simple HTTP Server. Built with [SwiftNIO](https://gith
 
 import AsyncHTTPServer
 
-// Setup
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
 let server = HTTPServer(eventLoopGroup: eventLoopGroup)
@@ -21,12 +20,10 @@ defer {
 
 try server.listenAndServe(host: "localhost", port: 8000)
 
-// Routes
 server.post("/v1/todo", function: createTodo)
 server.get("/v1/todo", function: getTodoList)
 server.get("/v1/todo/:id", function: getTodo)
 
-// Handlers
 func getTodoList(request: Request) async throws -> [TodoResponse] {
     ...
 }
