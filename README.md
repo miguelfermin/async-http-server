@@ -1,4 +1,4 @@
-# AsyncHttpServer
+# AsyncHTTPServer
 
 Naive implementation of a simple HTTP Server. Built with [SwiftNIO](https://github.com/apple/swift-nio).
 
@@ -7,6 +7,8 @@ Naive implementation of a simple HTTP Server. Built with [SwiftNIO](https://gith
 ## Example
 
 ```swift
+
+import AsyncHTTPServer
 
 // Setup
 let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
