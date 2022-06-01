@@ -1,10 +1,8 @@
 # AsyncHTTPServer
 
-Naive implementation of a simple HTTP Server. Built with [SwiftNIO](https://github.com/apple/swift-nio).
+Simple HTTP Server built on top of [SwiftNIO](https://github.com/apple/swift-nio). 
 
-> The short-term goal of this package is to experiment with SwiftNIO and design a simple HTTP Server API. Once the API design is done, the second step will be to build a robust implementation that could be use in production. 
-
-## Example
+## How to use
 
 ```swift
 
