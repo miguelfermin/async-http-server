@@ -42,7 +42,7 @@ extension Request {
         do {
             return try JSONDecoder().decode(T.self, from: body)
         } catch DecodingError.keyNotFound(let key, _) {
-            throw HttpServerError.decoding(dict: [key.stringValue: "Missing"])
+            throw HttpServerError.decoding(dict: ["Missing required field": key.stringValue])
         } catch DecodingError.typeMismatch(_, let context) {
             let title = context.codingPath.first?.stringValue ?? ""
             let description = context.debugDescription
